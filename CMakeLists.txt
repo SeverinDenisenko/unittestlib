@@ -16,7 +16,7 @@ target_include_directories(unittest
     INTERFACE 
         $<BUILD_INTERFACE:${PROJECT_INCLUDE_DIR}>)
 
-if (ENABLE_TESTING)
+if (ENABLE_TESTING AND PROJECT_IS_TOP_LEVEL)
     enable_testing()
     add_subdirectory(${CMAKE_CURRENT_SOURCE_DIR}/tests)
 endif()
