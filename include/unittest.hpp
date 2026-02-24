@@ -54,6 +54,8 @@ inline void add_test(std::unique_ptr<test> t)
         }                                                                                                              \
     } while (0)
 
+#define ASSERT_FALSE(cond) ASSERT_TRUE(!(cond))
+
 #define ASSERT_EQ(val1, val2) ASSERT_TRUE((val1) == (val2))
 
 #define ASSERT_NEQ(val1, val2) ASSERT_TRUE((val1) != (val2))

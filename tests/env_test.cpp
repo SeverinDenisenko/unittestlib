@@ -22,9 +22,7 @@ ENV_TEST(env_test, one)
 
 ENV_TEST(env_test, two)
 {
-    if (var_ != 0) {
-        throw std::runtime_error("var_ should be 0");
-    }
+    ASSERT_EQ(var_, 0);
 }
 
 TEST_MAIN()
