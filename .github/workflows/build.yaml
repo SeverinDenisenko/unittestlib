@@ -50,4 +50,4 @@ jobs:
 
       - name: Run tests
         working-directory: ${{ github.workspace }}
-        run: ctest --test-dir ${{ steps.strings.outputs.build-output-dir }} --output-on-failure
+        run: ctest -C ${{ matrix.build_type }} --test-dir ${{ steps.strings.outputs.build-output-dir }} --output-on-failure
