@@ -1,7 +1,9 @@
 #pragma once
 
+#include <format>
 #include <iostream>
 #include <memory>
+#include <source_location>
 #include <vector>
 
 namespace ut {
@@ -21,28 +23,32 @@ public:
     virtual ~test() = default;
 };
 
-inline std::vector<std::unique_ptr<test>> g_tests;
+inline std::vector<std::pair<std::unique_ptr<test>, std::string>> g_tests;
 
 inline int run_tests()
 {
-    for (const std::unique_ptr<test>& t : g_tests) {
+    int rc = 0;
+
+    for (const auto& [t, name] : g_tests) {
         try {
+            std::cout << "Running test [" << name << "]" << std::endl;
             t->setup();
             t->run();
             t->teardown();
+            std::cout << "Finished test [" << name << "]" << std::endl;
         } catch (const std::exception& e) {
-            std::cerr << "Test failed: " << e.what() << std::endl;
+            std::cerr << "Test [" << name << "] failed: " << e.what() << std::endl;
 
-            return 1;
+            rc = 1;
         }
     }
 
-    return 0;
+    return rc;
 }
 
-inline void add_test(std::unique_ptr<test> t)
+inline void add_test(std::unique_ptr<test> t, std::string name)
 {
-    g_tests.push_back(std::move(t));
+    g_tests.emplace_back(std::move(t), name);
 }
 
 } // namespace ut
@@ -50,15 +56,48 @@ inline void add_test(std::unique_ptr<test> t)
 #define ASSERT_TRUE(cond)                                                                                              \
     do {                                                                                                               \
         if (!(cond)) {                                                                                                 \
-            throw std::runtime_error("Assertion failed: " #cond);                                                      \
+            constexpr std::source_location location = std::source_location::current();                                 \
+            throw std::runtime_error(                                                                                  \
+                std::format("Assertion at {}:{} failed: " #cond, location.file_name(), location.line()));              \
         }                                                                                                              \
     } while (0)
 
-#define ASSERT_FALSE(cond) ASSERT_TRUE(!(cond))
+#define ASSERT_FALSE(cond)                                                                                             \
+    do {                                                                                                               \
+        if ((cond)) {                                                                                                  \
+            constexpr std::source_location location = std::source_location::current();                                 \
+            throw std::runtime_error(                                                                                  \
+                std::format("Assertion at {}:{} failed: " #cond, location.file_name(), location.line()));              \
+        }                                                                                                              \
+    } while (0)
 
-#define ASSERT_EQ(val1, val2) ASSERT_TRUE((val1) == (val2))
+#define ASSERT_EQ(val1, val2)                                                                                          \
+    do {                                                                                                               \
+        if ((val1) != (val2)) {                                                                                        \
+            constexpr std::source_location location = std::source_location::current();                                 \
+            throw std::runtime_error(                                                                                  \
+                std::format(                                                                                           \
+                    "Assertion at {}:{} failed: " #val1 " == " #val2 " ({} != {})",                                    \
+                    location.file_name(),                                                                              \
+                    location.line(),                                                                                   \
+                    (val1),                                                                                            \
+                    (val2)));                                                                                          \
+        }                                                                                                              \
+    } while (0)
 
-#define ASSERT_NEQ(val1, val2) ASSERT_TRUE((val1) != (val2))
+#define ASSERT_NEQ(val1, val2)                                                                                         \
+    do {                                                                                                               \
+        if ((val1) == (val2)) {                                                                                        \
+            constexpr std::source_location location = std::source_location::current();                                 \
+            throw std::runtime_error(                                                                                  \
+                std::format(                                                                                           \
+                    "Assertion at {}:{} failed: " #val1 " != " #val2 " ({} == {})",                                    \
+                    location.file_name(),                                                                              \
+                    location.line(),                                                                                   \
+                    (val1),                                                                                            \
+                    (val2)));                                                                                          \
+        }                                                                                                              \
+    } while (0)
 
 #define ENV_TEST(test, name)                                                                                           \
     class test_##test##_##name : public test {                                                                         \
@@ -68,7 +107,7 @@ inline void add_test(std::unique_ptr<test> t)
     static struct test_##test##_##name##_registrar {                                                                   \
         test_##test##_##name##_registrar()                                                                             \
         {                                                                                                              \
-            ut::add_test(std::make_unique<test_##test##_##name>());                                                    \
+            ut::add_test(std::make_unique<test_##test##_##name>(), std::string(#test "_" #name));                      \
         }                                                                                                              \
     } test_##test##_##name##_registrar_handle;                                                                         \
     void test_##test##_##name::run()
@@ -81,7 +120,7 @@ inline void add_test(std::unique_ptr<test> t)
     static struct test_##name##_registrar {                                                                            \
         test_##name##_registrar()                                                                                      \
         {                                                                                                              \
-            ut::add_test(std::make_unique<test_##name>());                                                             \
+            ut::add_test(std::make_unique<test_##name>(), std::string(#name));                                         \
         }                                                                                                              \
     } test_##name##_registrar_handle;                                                                                  \
     void test_##name::run()
