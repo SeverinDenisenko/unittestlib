@@ -6,8 +6,11 @@
 #include <iostream>
 #include <memory>
 #include <source_location>
-#include <stacktrace>
 #include <vector>
+
+#ifdef __linux__
+#include <stacktrace>
+#endif
 
 namespace ut {
 
@@ -128,6 +131,7 @@ inline void add_test(std::unique_ptr<test> t, std::string name)
     } test_##name##_registrar_handle;                                                                                  \
     void test_##name::run()
 
+#ifdef __linux__
 inline const char* get_signal_name(int signum)
 {
     const char* name = NULL;
@@ -179,10 +183,17 @@ inline void set_crash_handlers()
     sigaction(SIGFPE, &sa, NULL);
     sigaction(SIGPIPE, &sa, NULL);
 }
+#endif
+
+#ifdef __linux__
+#define SETUP_STACK_TRACE() set_crash_handlers()
+#else
+#define SETUP_STACK_TRACE()
+#endif
 
 #define TEST_MAIN()                                                                                                    \
     int main()                                                                                                         \
     {                                                                                                                  \
-        set_crash_handlers();                                                                                          \
+        SETUP_STACK_TRACE();                                                                                           \
         return ut::run_tests();                                                                                        \
     }
