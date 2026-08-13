@@ -9,7 +9,10 @@ set(CMAKE_EXPORT_COMPILE_COMMANDS True)
 option(ENABLE_TESTING OFF)
 
 add_library(unittest INTERFACE)
-target_link_libraries(unittest INTERFACE stdc++exp)
+
+if(LINUX) 
+    target_link_libraries(unittest INTERFACE stdc++exp)
+endif()
 
 set(PROJECT_INCLUDE_DIR ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
