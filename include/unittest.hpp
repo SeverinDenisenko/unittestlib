@@ -1,9 +1,12 @@
 #pragma once
 
+#include <csignal>
+#include <cstdint>
 #include <format>
 #include <iostream>
 #include <memory>
 #include <source_location>
+#include <stacktrace>
 #include <vector>
 
 namespace ut {
@@ -125,8 +128,61 @@ inline void add_test(std::unique_ptr<test> t, std::string name)
     } test_##name##_registrar_handle;                                                                                  \
     void test_##name::run()
 
+inline const char* get_signal_name(int signum)
+{
+    const char* name = NULL;
+    switch (signum) {
+    case SIGABRT:
+        name = "SIGABRT";
+        break;
+    case SIGSEGV:
+        name = "SIGSEGV";
+        break;
+    case SIGBUS:
+        name = "SIGBUS";
+        break;
+    case SIGILL:
+        name = "SIGILL";
+        break;
+    case SIGFPE:
+        name = "SIGFPE";
+        break;
+    }
+    return name;
+}
+
+inline void crash_handle(int signum, [[maybe_unused]] siginfo_t* si, [[maybe_unused]] void* unused)
+{
+    const char* name = get_signal_name(signum);
+    if (name) {
+        std::cout << std::format("Caught signal {} ({})", signum, name) << std::endl;
+    } else {
+        std::cout << std::format("Caught signal {}", signum) << std::endl;
+    }
+
+    std::cout << std::stacktrace::current();
+
+    exit(signum);
+}
+
+inline void set_crash_handlers()
+{
+    struct sigaction sa;
+    sa.sa_flags     = SA_SIGINFO;
+    sa.sa_sigaction = crash_handle;
+    sigemptyset(&sa.sa_mask);
+
+    sigaction(SIGABRT, &sa, NULL);
+    sigaction(SIGSEGV, &sa, NULL);
+    sigaction(SIGBUS, &sa, NULL);
+    sigaction(SIGILL, &sa, NULL);
+    sigaction(SIGFPE, &sa, NULL);
+    sigaction(SIGPIPE, &sa, NULL);
+}
+
 #define TEST_MAIN()                                                                                                    \
     int main()                                                                                                         \
     {                                                                                                                  \
+        set_crash_handlers();                                                                                          \
         return ut::run_tests();                                                                                        \
     }
